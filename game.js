@@ -66,17 +66,30 @@ function initClouds() {
 // Resize canvas to fit screen
 function resizeCanvas() {
     const container = document.querySelector('.game-container');
-    const maxWidth = window.innerWidth - 20;
-    const maxHeight = window.innerHeight - 180;
+    const title = document.querySelector('.title');
+    const instructions = document.querySelector('.instructions');
+    const highScoreEl = document.querySelector('.high-score');
     
-    // Calculate scale to fit while maintaining aspect ratio
-    const scaleX = maxWidth / BASE_WIDTH;
-    const scaleY = maxHeight / BASE_HEIGHT;
-    scale = Math.min(scaleX, scaleY, 1.5); // Cap at 1.5x for larger screens
+    // Get available space
+    const containerRect = container.getBoundingClientRect();
+    const titleHeight = title ? title.offsetHeight : 0;
+    const instructionsHeight = instructions ? instructions.offsetHeight : 0;
+    const highScoreHeight = highScoreEl ? highScoreEl.offsetHeight : 0;
     
-    // Minimum scale for very small screens
-    scale = Math.max(scale, 0.5);
+    // Calculate available space for canvas
+    const gaps = 24; // gaps between elements
+    const availableWidth = containerRect.width;
+    const availableHeight = containerRect.height - titleHeight - instructionsHeight - highScoreHeight - gaps;
     
+    // Calculate scale to fill available space while maintaining aspect ratio
+    const scaleX = availableWidth / BASE_WIDTH;
+    const scaleY = availableHeight / BASE_HEIGHT;
+    scale = Math.min(scaleX, scaleY);
+    
+    // Ensure minimum scale for playability
+    scale = Math.max(scale, 0.4);
+    
+    // Set canvas size
     canvas.width = Math.floor(BASE_WIDTH * scale);
     canvas.height = Math.floor(BASE_HEIGHT * scale);
     
@@ -486,13 +499,21 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Handle resize
-window.addEventListener('resize', () => {
-    resizeCanvas();
-    // Reset bird Y position on resize if not playing
-    if (gameState === 'start') {
-        bird.y = canvas.height / 2;
-    }
+// Handle resize with debounce
+let resizeTimeout;
+function handleResize() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        resizeCanvas();
+        if (gameState === 'start') {
+            bird.y = canvas.height / 2;
+        }
+    }, 100);
+}
+
+window.addEventListener('resize', handleResize);
+window.addEventListener('orientationchange', () => {
+    setTimeout(handleResize, 200);
 });
 
 // Prevent context menu on long press
@@ -500,12 +521,20 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // Prevent scrolling when touching canvas
 document.body.addEventListener('touchmove', (e) => {
-    if (e.target === canvas) {
-        e.preventDefault();
-    }
+    e.preventDefault();
 }, { passive: false });
 
-// Initialize
-resizeCanvas();
-bird.y = canvas.height / 2;
-gameLoop();
+// Initialize after DOM is ready
+function init() {
+    resizeCanvas();
+    bird.y = canvas.height / 2;
+    gameLoop();
+}
+
+// Wait for fonts to load for accurate sizing
+if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(init);
+} else {
+    // Fallback for browsers without font loading API
+    setTimeout(init, 100);
+}
