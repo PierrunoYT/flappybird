@@ -64,31 +64,45 @@ function initClouds() {
     }
 }
 
-// Resize canvas to fill screen
-function resizeCanvas() {
-    // Get viewport dimensions
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
-    // Get UI element heights
+// Get available dimensions for canvas
+function getAvailableDimensions() {
+    const container = document.querySelector('.game-container');
     const title = document.querySelector('.title');
     const instructions = document.querySelector('.instructions');
     const highScoreEl = document.querySelector('.high-score');
-    const container = document.querySelector('.game-container');
     const containerStyle = getComputedStyle(container);
     
-    const paddingTop = parseFloat(containerStyle.paddingTop) || 5;
-    const paddingBottom = parseFloat(containerStyle.paddingBottom) || 5;
-    const paddingLeft = parseFloat(containerStyle.paddingLeft) || 5;
-    const paddingRight = parseFloat(containerStyle.paddingRight) || 5;
+    const paddingTop = parseFloat(containerStyle.paddingTop) || 0;
+    const paddingBottom = parseFloat(containerStyle.paddingBottom) || 0;
+    const paddingLeft = parseFloat(containerStyle.paddingLeft) || 0;
+    const paddingRight = parseFloat(containerStyle.paddingRight) || 0;
     
-    const titleHeight = title ? title.offsetHeight + 5 : 0;
-    const instructionsHeight = instructions && getComputedStyle(instructions).display !== 'none' ? instructions.offsetHeight + 5 : 0;
-    const highScoreHeight = highScoreEl ? highScoreEl.offsetHeight + 3 : 0;
+    const titleRect = title ? title.getBoundingClientRect() : { height: 0 };
+    const titleMargin = title ? parseFloat(getComputedStyle(title).marginBottom) || 0 : 0;
     
-    // Calculate available space for canvas
-    const availableWidth = viewportWidth - paddingLeft - paddingRight;
-    const availableHeight = viewportHeight - paddingTop - paddingBottom - titleHeight - instructionsHeight - highScoreHeight;
+    const instructionsRect = instructions && getComputedStyle(instructions).display !== 'none' 
+        ? instructions.getBoundingClientRect() : { height: 0 };
+    const instructionsMargin = instructions && getComputedStyle(instructions).display !== 'none'
+        ? parseFloat(getComputedStyle(instructions).marginTop) || 0 : 0;
+    
+    const highScoreRect = highScoreEl ? highScoreEl.getBoundingClientRect() : { height: 0 };
+    const highScoreMargin = highScoreEl ? parseFloat(getComputedStyle(highScoreEl).marginTop) || 0 : 0;
+    
+    // Check if landscape mode (high score is positioned absolutely)
+    const isLandscape = window.matchMedia('(orientation: landscape)').matches;
+    const highScoreSpace = isLandscape ? 0 : (highScoreRect.height + highScoreMargin);
+    
+    const uiHeight = titleRect.height + titleMargin + instructionsRect.height + instructionsMargin + highScoreSpace;
+    
+    const availableWidth = window.innerWidth - paddingLeft - paddingRight;
+    const availableHeight = window.innerHeight - paddingTop - paddingBottom - uiHeight;
+    
+    return { availableWidth, availableHeight };
+}
+
+// Resize canvas to fill screen
+function resizeCanvas() {
+    const { availableWidth, availableHeight } = getAvailableDimensions();
     
     // Calculate canvas size to fill available space while maintaining aspect ratio
     let canvasWidth, canvasHeight;
@@ -107,9 +121,13 @@ function resizeCanvas() {
     canvasWidth = Math.max(canvasWidth, 200);
     canvasHeight = Math.max(canvasHeight, 300);
     
+    // Round to avoid subpixel rendering issues
+    canvasWidth = Math.floor(canvasWidth);
+    canvasHeight = Math.floor(canvasHeight);
+    
     // Set canvas size
-    canvas.width = Math.floor(canvasWidth);
-    canvas.height = Math.floor(canvasHeight);
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
     
     // Calculate scale based on canvas size
     scale = canvas.height / BASE_HEIGHT;
@@ -129,6 +147,9 @@ function resizeCanvas() {
     
     // Reinitialize clouds with new scale
     initClouds();
+    
+    // Log for debugging
+    console.log(`Canvas: ${canvasWidth}x${canvasHeight}, Scale: ${scale.toFixed(2)}`);
 }
 
 function resetGame() {
@@ -321,13 +342,14 @@ function draw() {
 
     // Draw score
     if (gameState === 'playing') {
+        const fontSize = Math.max(24, Math.floor(48 * scale));
         ctx.fillStyle = 'white';
-        ctx.font = `${Math.floor(48 * scale)}px "Press Start 2P"`;
+        ctx.font = `${fontSize}px "Press Start 2P"`;
         ctx.textAlign = 'center';
         ctx.strokeStyle = 'black';
-        ctx.lineWidth = 6 * scale;
-        ctx.strokeText(score, canvas.width / 2, 80 * scale);
-        ctx.fillText(score, canvas.width / 2, 80 * scale);
+        ctx.lineWidth = Math.max(3, 6 * scale);
+        ctx.strokeText(score, canvas.width / 2, Math.max(50, 80 * scale));
+        ctx.fillText(score, canvas.width / 2, Math.max(50, 80 * scale));
     }
 
     // Draw start screen
@@ -339,14 +361,16 @@ function draw() {
     if (gameState === 'gameover') {
         drawOverlay('GAME OVER', '#e74c3c');
         
-        ctx.font = `${Math.floor(16 * scale)}px "Press Start 2P"`;
+        const scoreFontSize = Math.max(12, Math.floor(16 * scale));
+        ctx.font = `${scoreFontSize}px "Press Start 2P"`;
         ctx.fillStyle = 'white';
         ctx.strokeStyle = 'black';
-        ctx.lineWidth = 4 * scale;
+        ctx.lineWidth = Math.max(2, 4 * scale);
         ctx.strokeText(`SCORE: ${score}`, canvas.width / 2, canvas.height / 2 + 20 * scale);
         ctx.fillText(`SCORE: ${score}`, canvas.width / 2, canvas.height / 2 + 20 * scale);
         
-        ctx.font = `${Math.floor(10 * scale)}px "Press Start 2P"`;
+        const retryFontSize = Math.max(8, Math.floor(10 * scale));
+        ctx.font = `${retryFontSize}px "Press Start 2P"`;
         ctx.strokeText('TAP TO RETRY', canvas.width / 2, canvas.height / 2 + 60 * scale);
         ctx.fillText('TAP TO RETRY', canvas.width / 2, canvas.height / 2 + 60 * scale);
     }
@@ -491,11 +515,12 @@ function drawOverlay(text, color) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    ctx.font = `${Math.floor(24 * scale)}px "Press Start 2P"`;
+    const fontSize = Math.max(16, Math.floor(24 * scale));
+    ctx.font = `${fontSize}px "Press Start 2P"`;
     ctx.textAlign = 'center';
     ctx.fillStyle = color;
     ctx.strokeStyle = 'black';
-    ctx.lineWidth = 6 * scale;
+    ctx.lineWidth = Math.max(3, 6 * scale);
     ctx.strokeText(text, canvas.width / 2, canvas.height / 2 - 30 * scale);
     ctx.fillText(text, canvas.width / 2, canvas.height / 2 - 30 * scale);
 }
@@ -534,7 +559,7 @@ function handleResize() {
 
 window.addEventListener('resize', handleResize);
 window.addEventListener('orientationchange', () => {
-    setTimeout(handleResize, 100);
+    setTimeout(handleResize, 150);
 });
 
 // Prevent context menu on long press
