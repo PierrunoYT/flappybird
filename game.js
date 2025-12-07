@@ -5,6 +5,7 @@ const highScoreElement = document.getElementById('highScore');
 // Base game dimensions (design resolution)
 const BASE_WIDTH = 400;
 const BASE_HEIGHT = 600;
+const ASPECT_RATIO = BASE_WIDTH / BASE_HEIGHT;
 
 // Scaling factor
 let scale = 1;
@@ -63,35 +64,55 @@ function initClouds() {
     }
 }
 
-// Resize canvas to fit screen
+// Resize canvas to fill screen
 function resizeCanvas() {
-    const container = document.querySelector('.game-container');
+    // Get viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Get UI element heights
     const title = document.querySelector('.title');
     const instructions = document.querySelector('.instructions');
     const highScoreEl = document.querySelector('.high-score');
+    const container = document.querySelector('.game-container');
+    const containerStyle = getComputedStyle(container);
     
-    // Get available space
-    const containerRect = container.getBoundingClientRect();
-    const titleHeight = title ? title.offsetHeight : 0;
-    const instructionsHeight = instructions ? instructions.offsetHeight : 0;
-    const highScoreHeight = highScoreEl ? highScoreEl.offsetHeight : 0;
+    const paddingTop = parseFloat(containerStyle.paddingTop) || 5;
+    const paddingBottom = parseFloat(containerStyle.paddingBottom) || 5;
+    const paddingLeft = parseFloat(containerStyle.paddingLeft) || 5;
+    const paddingRight = parseFloat(containerStyle.paddingRight) || 5;
+    
+    const titleHeight = title ? title.offsetHeight + 5 : 0;
+    const instructionsHeight = instructions && getComputedStyle(instructions).display !== 'none' ? instructions.offsetHeight + 5 : 0;
+    const highScoreHeight = highScoreEl ? highScoreEl.offsetHeight + 3 : 0;
     
     // Calculate available space for canvas
-    const gaps = 24; // gaps between elements
-    const availableWidth = containerRect.width;
-    const availableHeight = containerRect.height - titleHeight - instructionsHeight - highScoreHeight - gaps;
+    const availableWidth = viewportWidth - paddingLeft - paddingRight;
+    const availableHeight = viewportHeight - paddingTop - paddingBottom - titleHeight - instructionsHeight - highScoreHeight;
     
-    // Calculate scale to fill available space while maintaining aspect ratio
-    const scaleX = availableWidth / BASE_WIDTH;
-    const scaleY = availableHeight / BASE_HEIGHT;
-    scale = Math.min(scaleX, scaleY);
+    // Calculate canvas size to fill available space while maintaining aspect ratio
+    let canvasWidth, canvasHeight;
     
-    // Ensure minimum scale for playability
-    scale = Math.max(scale, 0.4);
+    if (availableWidth / availableHeight > ASPECT_RATIO) {
+        // Height is the limiting factor
+        canvasHeight = availableHeight;
+        canvasWidth = canvasHeight * ASPECT_RATIO;
+    } else {
+        // Width is the limiting factor
+        canvasWidth = availableWidth;
+        canvasHeight = canvasWidth / ASPECT_RATIO;
+    }
+    
+    // Ensure minimum size
+    canvasWidth = Math.max(canvasWidth, 200);
+    canvasHeight = Math.max(canvasHeight, 300);
     
     // Set canvas size
-    canvas.width = Math.floor(BASE_WIDTH * scale);
-    canvas.height = Math.floor(BASE_HEIGHT * scale);
+    canvas.width = Math.floor(canvasWidth);
+    canvas.height = Math.floor(canvasHeight);
+    
+    // Calculate scale based on canvas size
+    scale = canvas.height / BASE_HEIGHT;
     
     // Update scaled values
     GRAVITY = BASE_GRAVITY * scale;
@@ -508,33 +529,33 @@ function handleResize() {
         if (gameState === 'start') {
             bird.y = canvas.height / 2;
         }
-    }, 100);
+    }, 50);
 }
 
 window.addEventListener('resize', handleResize);
 window.addEventListener('orientationchange', () => {
-    setTimeout(handleResize, 200);
+    setTimeout(handleResize, 100);
 });
 
 // Prevent context menu on long press
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-// Prevent scrolling when touching canvas
+// Prevent all scrolling
 document.body.addEventListener('touchmove', (e) => {
     e.preventDefault();
 }, { passive: false });
 
-// Initialize after DOM is ready
+// Prevent double-tap zoom
+document.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+});
+
+// Initialize
 function init() {
     resizeCanvas();
     bird.y = canvas.height / 2;
     gameLoop();
 }
 
-// Wait for fonts to load for accurate sizing
-if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(init);
-} else {
-    // Fallback for browsers without font loading API
-    setTimeout(init, 100);
-}
+// Start immediately
+init();
