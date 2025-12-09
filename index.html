@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
@@ -16,6 +16,25 @@
         /* Inline critical styles to prevent white flash */
         html, body {
             background: #1a1a2e !important;
+        }
+        
+        /* Additional responsive base styles */
+        @media (max-width: 480px) {
+            html {
+                font-size: 14px;
+            }
+        }
+        
+        @media (min-width: 481px) and (max-width: 768px) {
+            html {
+                font-size: 16px;
+            }
+        }
+        
+        @media (min-width: 769px) {
+            html {
+                font-size: 18px;
+            }
         }
     </style>
 </head>
@@ -31,5 +50,6 @@
     </div>
 
     <script src="game.js"></script>
+    <script src="responsive_test.js"></script>
 </body>
 </html>

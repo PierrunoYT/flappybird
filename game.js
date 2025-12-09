@@ -152,6 +152,38 @@ function resizeCanvas() {
     console.log(`Canvas: ${canvasWidth}x${canvasHeight}, Scale: ${scale.toFixed(2)}`);
 }
 
+// Enhanced resize handling for different screen types
+function handleResize() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        resizeCanvas();
+        if (gameState === 'start') {
+            bird.y = canvas.height / 2;
+        }
+        
+        // Additional responsive adjustments
+        const isPortrait = window.matchMedia('(orientation: portrait)').matches;
+        const isSmallScreen = window.innerWidth <= 600 || window.innerHeight <= 600;
+        
+        // Adjust game difficulty based on screen size
+        if (isSmallScreen) {
+            // Make game slightly easier on small screens
+            PIPE_GAP = Math.min(BASE_PIPE_GAP * scale * 1.1, canvas.height * 0.4);
+        } else {
+            PIPE_GAP = BASE_PIPE_GAP * scale;
+        }
+        
+        // Adjust bird position for better visibility on different orientations
+        if (isPortrait) {
+            bird.x = Math.max(60 * scale, canvas.width * 0.15);
+        } else {
+            bird.x = Math.max(80 * scale, canvas.width * 0.2);
+        }
+        
+        console.log(`Responsive adjustments: Portrait=${isPortrait}, SmallScreen=${isSmallScreen}`);
+    }, 50);
+}
+
 function resetGame() {
     bird.y = canvas.height / 2;
     bird.velocity = 0;
@@ -547,15 +579,6 @@ document.addEventListener('keydown', (e) => {
 
 // Handle resize with debounce
 let resizeTimeout;
-function handleResize() {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-        resizeCanvas();
-        if (gameState === 'start') {
-            bird.y = canvas.height / 2;
-        }
-    }, 50);
-}
 
 window.addEventListener('resize', handleResize);
 window.addEventListener('orientationchange', () => {
